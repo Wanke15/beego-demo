@@ -1,52 +1,32 @@
 package main
 
 import (
-	"strings"
-
-	"github.com/beego/beego/v2/server/web"
 	"github.com/yanyiwu/gojieba"
+
+	"github.com/gin-gonic/gin"
 )
 
 func main() {
-	ctrl := &MainController{}
-	jiebaCtrl := &JiebaController{}
 
-	web.Router("/hello", ctrl)
-	web.Router("/jieba", jiebaCtrl)
+	use_hmm := true
+	x := gojieba.NewJieba()
+	defer x.Free()
 
-	web.Run("127.0.0.1:8089")
-}
+	r := gin.Default()
+	r.GET("/ping", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"message": "pong",
+		})
+	})
 
-// MainController:
-// The controller must implement ControllerInterface
-// Usually we extends web.Controller
-type MainController struct {
-	web.Controller
-}
+	r.GET("/cut", func(c *gin.Context) {
+		sent := c.DefaultQuery("sent", "")
+		var words []string = x.Cut(sent, use_hmm)
 
-type JiebaController struct {
-	web.Controller
-}
+		c.JSON(200, gin.H{
+			"words": words,
+		})
+	})
 
-// address: http://localhost:8080 GET
-func (ctrl *MainController) Get() {
-
-	name := ctrl.GetString("name")
-	if name == "" {
-		ctrl.Ctx.WriteString("Hello World")
-		return
-	}
-	ctrl.Ctx.WriteString("Hello " + name)
-}
-
-var x = gojieba.NewJieba()
-
-func (jiebaCtrl *JiebaController) Get() {
-
-	sentence := jiebaCtrl.GetString("sentence")
-
-	var words []string
-	words = x.Cut(sentence, true)
-
-	jiebaCtrl.Ctx.WriteString(strings.Join(words, "/"))
+	r.Run("127.0.0.1:8089") // listen and serve on 0.0.0.0:8080 (for windows "localhost:8080")
 }
